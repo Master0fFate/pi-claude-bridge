@@ -185,18 +185,39 @@ npm run verify
 
 ## Models
 
-| Model | ID |
-|---|---|
-| Claude Opus 5.5 | `claude-bridge/claude-opus-5-5` |
-| Claude Sonnet 5.5 | `claude-bridge/claude-sonnet-5-5` |
-| Claude Haiku 5.5 | `claude-bridge/claude-haiku-5-5` |
-| Claude Fable 5.1 | `claude-bridge/claude-fable-5-1` |
+| Model | ID | Context window | Max output |
+|---|---|---:|---:|
+| Claude Opus 5.5 | `claude-bridge/claude-opus-5-5` | 1M | 128K |
+| Claude Sonnet 5.5 | `claude-bridge/claude-sonnet-5-5` | 1M | 128K |
+| Claude Haiku 5.5 | `claude-bridge/claude-haiku-5-5` | 1M | 128K |
+| Claude Fable 5.1 | `claude-bridge/claude-fable-5-1` | 1M | 128K |
 
-Which models you can use depends on your plan. Pi shows the cost as zero, because usage counts against your plan, not a per-token bill. Token counts are still reported.
+The defaults are Anthropic's published limits. Which models you can use depends on your plan. Pi shows the cost as zero, because usage counts against your plan, not a per-token bill. Token counts are still reported.
 
 ## Configuration
 
-All settings are optional environment variables.
+### Context window and output limit
+
+Change them per model in Pi's `models.json`. Pi reads `~/.pi/agent/models.json`; Fate UI reads `~/.pi/fateGUI/models.json`. Add a `claude-bridge` entry under `providers`, next to anything already there:
+
+```json
+{
+  "providers": {
+    "claude-bridge": {
+      "modelOverrides": {
+        "claude-opus-5-5": { "contextWindow": 400000 },
+        "claude-sonnet-5-5": { "contextWindow": 200000, "maxTokens": 64000 }
+      }
+    }
+  }
+}
+```
+
+Models you leave out keep the defaults. Pi reloads the file when you open `/model`. The window decides when Pi compacts the conversation, so lower it if your plan gives you less than 1M, or if you want Pi to compact earlier and use less of your plan per message.
+
+### Environment variables
+
+All other settings are optional environment variables.
 
 | Variable | Default | Purpose |
 |---|---|---|

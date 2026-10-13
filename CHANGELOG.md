@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+The models now use Anthropic's published limits: a 1M-token context window and 128K output for Opus 5.5, Sonnet 5.5, Haiku 5.5, and Fable 5.1. Before, the bridge declared 200K, so Pi compacted long sessions far too early.
+
+You can change the context window and output limit per model with `modelOverrides` in Pi's `models.json` (`~/.pi/agent/models.json` for Pi, `~/.pi/fateGUI/models.json` for Fate UI). The README shows the format.
+
 ## 0.1.2
 
 Loading a conversation into a new Claude session now has a stop condition. Before, a fresh start, a reset, or a provider switch could push a history of any size into Claude, which then either failed or made Claude Code run its own expensive compaction. Now the bridge estimates the size first. If it does not fit the model's context window minus 16k tokens, the call fails with "Prompt is too long" before Claude starts, Pi compacts the conversation, and the retry goes through with the summary.

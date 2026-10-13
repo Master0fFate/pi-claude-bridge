@@ -16,6 +16,6 @@ export const MODELS = catalog.map((model) => ({
   reasoning: true,
   input: ["text", "image"] as ("text" | "image")[],
   cost: noCost,
-  contextWindow: 200_000,
-  maxTokens: 64_000,
+  contextWindow: 1_000_000,
+  maxTokens: 128_000,
 }));
