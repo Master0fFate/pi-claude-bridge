@@ -1,0 +1,69 @@
+{
+  "name": "pi-claude-bridge",
+  "version": "0.1.0",
+  "description": "Use your Claude subscription in Pi through one persistent Claude Code session per Pi session.",
+  "license": "MIT",
+  "author": "Master0fFate",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Master0fFate/pi-claude-bridge.git"
+  },
+  "homepage": "https://github.com/Master0fFate/pi-claude-bridge#readme",
+  "bugs": {
+    "url": "https://github.com/Master0fFate/pi-claude-bridge/issues"
+  },
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "extension",
+    "claude",
+    "claude-code",
+    "model-provider"
+  ],
+  "files": [
+    "extensions/**/*",
+    "src/**/*",
+    "scripts/verify.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/claude-bridge/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-ai": {
+      "optional": true
+    },
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "1.2.0",
+    "@earendil-works/pi-coding-agent": "1.2.0",
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "@earendil-works/chord": "1.2.0",
+    "@earendil-works/pi-agent-core": "1.2.0",
+    "@earendil-works/pi-codemode": "1.2.0",
+    "@earendil-works/pi-mcp": "1.2.0",
+    "@earendil-works/pi-telemetry": "1.2.0",
+    "@earendil-works/pi-tui": "1.2.0"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "verify": "node scripts/verify.mjs"
+  }
+}
