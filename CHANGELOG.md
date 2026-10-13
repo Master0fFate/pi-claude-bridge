@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2
+
+Loading a conversation into a new Claude session now has a stop condition. Before, a fresh start, a reset, or a provider switch could push a history of any size into Claude, which then either failed or made Claude Code run its own expensive compaction. Now the bridge estimates the size first. If it does not fit the model's context window minus 16k tokens, the call fails with "Prompt is too long" before Claude starts, Pi compacts the conversation, and the retry goes through with the summary.
+
+Claude Code's own auto-compaction is now off inside the bridge, so Pi is the only thing that compacts and no hidden second summary is billed to your plan.
+
 ## 0.1.1
 
 Releases now ship as a download. Grab `pi-claude-bridge-v0.1.1.zip` (or the `.tar.gz`), unzip it, and run `pi install` on the folder. `SHA256SUMS.txt` lists the checksums.

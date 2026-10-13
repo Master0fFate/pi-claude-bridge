@@ -27,6 +27,9 @@ const HOME = process.env.PI_CLAUDE_BRIDGE_HOME || path.join(os.homedir(), ".pi",
 const WORK_DIR = path.join(HOME, "work");
 const RUN_DIR = path.join(HOME, "run");
 const SAVED_DIR = path.join(HOME, "sessions");
+const CHARS_PER_TOKEN = 4;
+const IMAGE_TOKENS = 1_200;
+const RESERVE_TOKENS = 16_384;
 
 interface SavedSession {
   claudeSessionId: string;
@@ -159,6 +162,14 @@ function evictOverflow(keep: string) {
   }
 }
 
+function assertFits(model: Model<Api>, systemPrompt: string, tools: unknown[], delivery: Delivery) {
+  const blocks = delivery.kind === "input" ? delivery.blocks : [];
+  const chars = systemPrompt.length + JSON.stringify(tools).length + blocks.reduce((sum, block) => sum + (block.type === "text" ? block.text.length : 0), 0);
+  const tokens = Math.ceil(chars / CHARS_PER_TOKEN) + IMAGE_TOKENS * blocks.filter((block) => block.type === "image").length;
+  const limit = model.contextWindow - RESERVE_TOKENS;
+  if (tokens > limit) throw new Error(`Prompt is too long: about ${tokens} tokens, and a new Claude session takes at most ${limit}. Compact the conversation to continue.`);
+}
+
 function resumable(saved: SavedSession | undefined, conversation: ConversationMessage[]) {
   if (!saved) return undefined;
   const delta = deltaAfter(saved.known, conversation);
@@ -200,10 +211,12 @@ async function prepare(model: Model<Api>, context: TranscriptContext, options: S
     for (const hash of saved.promptLines ?? []) session.promptSeen.add(hash);
     return { key, session, tools, delivery: withNote(resume.delivery, promptNote(session, systemPrompt)), sent: resume.delta };
   }
+  const delivery = bootstrap(conversation);
+  assertFits(model, systemPrompt, tools, delivery);
   debug(`fresh ${key ?? "one-shot"}: sending ${conversation.length} message(s)`);
   const session = new ClaudeSession(base);
   for (const line of promptLines(systemPrompt)) session.promptSeen.add(lineHash(line));
-  return { key, session, tools, delivery: bootstrap(conversation), sent: conversation };
+  return { key, session, tools, delivery, sent: conversation };
 }
 
 async function respond(model: Model<Api>, context: TranscriptContext, options: SimpleStreamOptions | undefined, stream: AssistantMessageEventStream, output: AssistantMessage) {

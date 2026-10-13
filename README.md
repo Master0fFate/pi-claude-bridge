@@ -208,7 +208,7 @@ All settings are optional environment variables.
 
 When `claude` is not on `PATH`, the bridge also looks in `~/.local/bin`, `~/.claude/local`, `/opt/homebrew/bin`, `/usr/local/bin`, and on Windows `%APPDATA%\npm`. That covers desktop apps on macOS, which do not get your shell's `PATH`.
 
-The Claude process always uses your subscription login. The bridge removes `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`, `CLAUDE_CODE_ENTRYPOINT`, and the Bedrock, Vertex, and Foundry switches from its environment, and turns off Claude Code's telemetry, error reporting, auto-updater, and other non-essential traffic.
+The Claude process always uses your subscription login. The bridge removes `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`, `CLAUDE_CODE_ENTRYPOINT`, and the Bedrock, Vertex, and Foundry switches from its environment, and turns off Claude Code's auto-compaction, telemetry, error reporting, auto-updater, and other non-essential traffic.
 
 ## When the conversation is sent again
 
@@ -220,6 +220,8 @@ The bridge sends past messages only when the Claude session cannot continue on i
 - **Claude's own session file is gone.** For example, after Claude Code cleaned up old sessions.
 
 Errors, retries, and aborts do not cause a resend. A failed turn keeps the same Claude process, and Pi's automatic retry sends a one-word nudge.
+
+Loading a history into a new Claude session has a hard stop: it must fit the model's context window minus 16k tokens. A bigger history is refused with "Prompt is too long" before Claude starts, so nothing is spent on it. Pi then compacts the conversation and retries with the summary.
 
 ## Troubleshooting
 
@@ -251,7 +253,7 @@ Run Pi with `PI_CLAUDE_BRIDGE_DEBUG=1` and look for `reset` lines; each one name
 
 - Tools appear to Claude as `mcp__pi__<name>`. The bridge adds one line to the system prompt to say so.
 - If you type a message while tools are still running, it reaches Claude together with the last tool result.
-- Claude Code can still compact its own session when it grows large, independently of Pi.
+- Claude Code's own auto-compaction is off. Pi does all compacting, so no hidden second summary runs.
 - One-off calls from Pi, such as compaction summaries, run in a short-lived Claude process that keeps no session file.
 - Claude Code stores its session files in its own projects folder, under the bridge's work directory.
 
