@@ -64,6 +64,16 @@ sequenceDiagram
 
 ## Quick start
 
+You need [Pi](https://github.com/earendil-works/pi). If you do not have it yet:
+
+```sh
+# macOS, Linux
+curl -fsSL https://pi.dev/install.sh | sh
+
+# any platform, with Node 22.19 or later
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent
+```
+
 ### 1. Install Claude Code and sign in
 
 ```sh
@@ -93,6 +103,15 @@ pi --model claude-bridge/claude-sonnet-5-5
 ```
 
 Done. Your next message goes through your subscription.
+
+### Update or remove
+
+```sh
+pi update git:github.com/Master0fFate/pi-claude-bridge
+pi remove git:github.com/Master0fFate/pi-claude-bridge
+```
+
+To pin a release instead of following `main`, install with a tag: `pi install git:github.com/Master0fFate/pi-claude-bridge@v0.1.0`. The bridge keeps its state in `~/.pi/agent/claude-bridge`; delete that folder after removing it if you want a clean slate.
 
 ## Tutorials
 
