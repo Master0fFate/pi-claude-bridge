@@ -1,6 +1,6 @@
 {
   "name": "pi-claude-bridge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Use your Claude subscription in Pi through one persistent Claude Code session per Pi session.",
   "license": "MIT",
   "author": "Master0fFate",
@@ -26,10 +26,11 @@
     "src/**/*",
     "scripts/verify.mjs",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22.19"
   },
   "pi": {
     "extensions": [
@@ -64,6 +65,7 @@
   },
   "scripts": {
     "check": "tsc --noEmit",
+    "smoke": "node scripts/smoke.mjs",
     "verify": "node scripts/verify.mjs"
   }
 }

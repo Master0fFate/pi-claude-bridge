@@ -6,6 +6,7 @@
 
 One long-lived Claude Code session per Pi session. Only new input goes over the wire.
 
+[![CI](https://github.com/Master0fFate/pi-claude-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/Master0fFate/pi-claude-bridge/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Pi 1.1+](https://img.shields.io/badge/pi-1.1%2B-8A2BE2.svg)](https://github.com/earendil-works/pi)
 [![Claude Code](https://img.shields.io/badge/claude%20code-2.1-D97757.svg)](https://claude.com/claude-code)
@@ -93,6 +94,20 @@ Run `claude` once and sign in with `/login`, using the account that has your Pro
 ```sh
 pi install git:github.com/Master0fFate/pi-claude-bridge
 ```
+
+<details>
+<summary>Prefer a download? Install from a release instead.</summary>
+
+1. Download `pi-claude-bridge-vX.Y.Z.zip` from the [latest release](https://github.com/Master0fFate/pi-claude-bridge/releases/latest).
+2. Unzip it to a folder you will keep, for example `~/pi-packages/pi-claude-bridge`.
+3. Point Pi at that folder:
+
+   ```sh
+   pi install ~/pi-packages/pi-claude-bridge
+   ```
+
+To update, replace the folder's contents with a newer release. To check a download, compare it with `SHA256SUMS.txt` from the same release.
+</details>
 
 ### 3. Pick a model
 

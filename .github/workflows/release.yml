@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Match the tag to package.json
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - name: Build the archives
+        run: |
+          npm pack --silent
+          tar -xzf pi-claude-bridge-*.tgz
+          mv package pi-claude-bridge
+          zip -qr "pi-claude-bridge-$GITHUB_REF_NAME.zip" pi-claude-bridge
+          tar -czf "pi-claude-bridge-$GITHUB_REF_NAME.tar.gz" pi-claude-bridge
+          sha256sum pi-claude-bridge-$GITHUB_REF_NAME.* > SHA256SUMS.txt
+          awk -v version="${GITHUB_REF_NAME#v}" '/^## /{found = ($2 == version); next} found' CHANGELOG.md > notes.md
+          test -s notes.md
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" pi-claude-bridge-$GITHUB_REF_NAME.* SHA256SUMS.txt --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" pi-claude-bridge-$GITHUB_REF_NAME.* SHA256SUMS.txt --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+          fi
