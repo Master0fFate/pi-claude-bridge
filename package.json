@@ -1,6 +1,6 @@
 {
   "name": "pi-claude-bridge",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Use your Claude subscription in Pi through one persistent Claude Code session per Pi session.",
   "license": "MIT",
   "author": "Master0fFate",

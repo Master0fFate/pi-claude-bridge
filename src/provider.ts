@@ -58,9 +58,16 @@ const promptLines = (prompt: string) => prompt.split("\n").map((line) => line.tr
 const lineHash = (line: string) => createHash("sha1").update(line).digest("base64url").slice(0, 12);
 
 function promptNote(session: ClaudeSession, systemPrompt: string): string | undefined {
-  const added = promptLines(systemPrompt).filter((line) => !session.promptSeen.has(lineHash(line)));
+  if (systemPrompt === session.lastSystemPrompt) return undefined;
+  session.lastSystemPrompt = systemPrompt;
+  const added: string[] = [];
+  for (const line of promptLines(systemPrompt)) {
+    const hash = lineHash(line);
+    if (session.promptSeen.has(hash)) continue;
+    session.promptSeen.add(hash);
+    added.push(line);
+  }
   if (!added.length) return undefined;
-  for (const line of added) session.promptSeen.add(lineHash(line));
   return `<system-reminder>\nInstructions added to the system prompt since this session started:\n${added.join("\n")}\n</system-reminder>`;
 }
 
@@ -71,9 +78,15 @@ function withNote(delivery: Delivery, note: string | undefined): Delivery {
 
 const savedFile = (key: string) => path.join(SAVED_DIR, `${createHash("sha256").update(key).digest("hex").slice(0, 32)}.json`);
 
+const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const stringList = (value: unknown): value is string[] => Array.isArray(value) && value.every((item) => typeof item === "string");
+
 function readSaved(key: string): SavedSession | undefined {
   try {
-    return JSON.parse(readFileSync(savedFile(key), "utf8")) as SavedSession;
+    const saved = JSON.parse(readFileSync(savedFile(key), "utf8")) as Partial<SavedSession>;
+    if (typeof saved.claudeSessionId !== "string" || !SESSION_ID.test(saved.claudeSessionId) || !stringList(saved.known)) return undefined;
+    if (saved.promptLines !== undefined && !stringList(saved.promptLines)) return undefined;
+    return saved as SavedSession;
   } catch {
     return undefined;
   }
@@ -93,10 +106,10 @@ function sweepSaved() {
 }
 
 function writeSaved(key: string, entry: SavedSession) {
-  mkdirSync(SAVED_DIR, { recursive: true });
+  mkdirSync(SAVED_DIR, { recursive: true, mode: 0o700 });
   const file = savedFile(key);
   const temp = `${file}.${process.pid}.tmp`;
-  writeFileSync(temp, JSON.stringify(entry));
+  writeFileSync(temp, JSON.stringify(entry), { mode: 0o600 });
   renameSync(temp, file);
   sweepSaved();
 }
@@ -110,10 +123,16 @@ const snapshot = (session: ClaudeSession, known = session.known): SavedSession =
 const unfinished = (message: ConversationMessage) => message.role === "assistant" && (message.stopReason === "error" || message.stopReason === "aborted");
 
 function deltaAfter(known: readonly string[], conversation: ConversationMessage[]) {
-  const visible = conversation.filter((message) => !unfinished(message));
-  if (visible.length < known.length) return undefined;
-  for (let index = 0; index < known.length; index += 1) if (fingerprint(visible[index]!) !== known[index]) return undefined;
-  return visible.slice(known.length);
+  let matched = 0;
+  let index = 0;
+  for (; index < conversation.length && matched < known.length; index += 1) {
+    const message = conversation[index]!;
+    if (unfinished(message)) continue;
+    if (fingerprint(message) !== known[matched]) return undefined;
+    matched += 1;
+  }
+  if (matched < known.length) return undefined;
+  return conversation.slice(index).filter((message) => !unfinished(message));
 }
 
 function deliveryFor(state: ClaudeSession["state"], pendingIds: string[], delta: ConversationMessage[]): Delivery | undefined {
@@ -200,7 +219,7 @@ async function prepare(model: Model<Api>, context: TranscriptContext, options: S
   existing?.close();
   if (key) sessions.delete(key);
 
-  mkdirSync(WORK_DIR, { recursive: true });
+  mkdirSync(WORK_DIR, { recursive: true, mode: 0o700 });
   const base = { systemPrompt, tools, model: model.id, reasoning: options?.reasoning, cwd: WORK_DIR, runDir: RUN_DIR, persist: Boolean(key) };
   const saved = key ? readSaved(key) : undefined;
   const resume = key ? resumable(saved, conversation) : undefined;
@@ -216,6 +235,7 @@ async function prepare(model: Model<Api>, context: TranscriptContext, options: S
   debug(`fresh ${key ?? "one-shot"}: sending ${conversation.length} message(s)`);
   const session = new ClaudeSession(base);
   for (const line of promptLines(systemPrompt)) session.promptSeen.add(lineHash(line));
+  session.lastSystemPrompt = systemPrompt;
   return { key, session, tools, delivery, sent: conversation };
 }
 

@@ -106,7 +106,11 @@ pi install git:github.com/Master0fFate/pi-claude-bridge
    pi install ~/pi-packages/pi-claude-bridge
    ```
 
-To update, replace the folder's contents with a newer release. To check a download, compare it with `SHA256SUMS.txt` from the same release.
+To update, replace the folder's contents with a newer release. To check a download, compare it with `SHA256SUMS.txt` from the same release, or confirm GitHub built it from this repository:
+
+```sh
+gh attestation verify pi-claude-bridge-vX.Y.Z.zip -R Master0fFate/pi-claude-bridge
+```
 </details>
 
 ### 3. Pick a model

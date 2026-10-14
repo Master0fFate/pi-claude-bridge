@@ -14,6 +14,10 @@ export interface McpToolResult {
   [key: string]: unknown;
 }
 
+const STRUCTURE_TAG = /<(\/?)(user_message|user|assistant|tool_result|tool_call|previous_conversation)\b/gi;
+const USER_MESSAGE_TAG = /<(\/?)(user_message)\b/gi;
+const neutralize = (text: string, tags = STRUCTURE_TAG) => text.replace(tags, "&lt;$1$2");
+
 const imageBlock = (image: ImageContent): ClaudeBlock => ({
   type: "image",
   source: { type: "base64", media_type: image.mimeType, data: image.data },
@@ -26,7 +30,7 @@ export function userBlocks(message: UserMessage): ClaudeBlock[] {
 
 export function toolResultContent(result: ToolResultMessage): McpToolResult {
   const content: McpContent[] = result.content.map((part: TextContent | ImageContent) =>
-    part.type === "text" ? { type: "text", text: part.text } : { type: "image", data: part.data, mimeType: part.mimeType },
+    part.type === "text" ? { type: "text", text: neutralize(part.text, USER_MESSAGE_TAG) } : { type: "image", data: part.data, mimeType: part.mimeType },
   );
   return { content: content.length ? content : [{ type: "text", text: "(no output)" }], isError: result.isError };
 }
@@ -42,7 +46,7 @@ export function appendUserText(result: McpToolResult, users: UserMessage[]): Mcp
 }
 
 const textOf = (content: string | (TextContent | ImageContent)[]) =>
-  typeof content === "string" ? content : content.map((part) => (part.type === "text" ? part.text : "[image]")).join("\n");
+  neutralize(typeof content === "string" ? content : content.map((part) => (part.type === "text" ? part.text : "[image]")).join("\n"));
 
 function renderMessage(message: Message): string {
   switch (message.role) {
@@ -51,8 +55,8 @@ function renderMessage(message: Message): string {
     case "assistant":
       return `<assistant>\n${message.content
         .map((part) => {
-          if (part.type === "text") return part.text;
-          if (part.type === "toolCall") return `<tool_call name="${part.name}">${JSON.stringify(part.arguments)}</tool_call>`;
+          if (part.type === "text") return neutralize(part.text);
+          if (part.type === "toolCall") return `<tool_call name="${part.name}">${neutralize(JSON.stringify(part.arguments))}</tool_call>`;
           return "";
         })
         .filter(Boolean)

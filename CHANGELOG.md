@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.4
+
+Security fixes:
+
+- Claude Code permission requests are now approved only for Pi's own tools. Before, the bridge approved every request it was asked about, including built-in tools and network access.
+- Text inside a tool result can no longer pose as a message from you. Tags that mimic the bridge's own markers are escaped, both in live tool results and when a conversation is replayed into a new Claude session.
+- On Windows, when `claude` is an npm `.cmd` shim, paths and arguments are no longer passed through cmd.exe with broken quoting. A path containing `"` or `%` is refused with a clear error.
+- `claude` is no longer looked up in relative `PATH` entries, so a `claude.cmd` planted in a project folder is never run.
+- Saved session checkpoints are validated before use, and the bridge's state files are created readable by your user only.
+- CI and releases pin every GitHub Action to a commit, do not leave the job token in the checkout, skip dependency install scripts, and attach signed build provenance to the release archives.
+
+Performance: the bridge spends about a third less CPU per model call. It no longer rehashes an unchanged system prompt, and it compares conversation history without copying it. What goes to Claude is unchanged.
+
 ## 0.1.3
 
 The models now use Anthropic's published limits: a 1M-token context window and 128K output for Opus 5.5, Sonnet 5.5, Haiku 5.5, and Fable 5.1. Before, the bridge declared 200K, so Pi compacted long sessions far too early.

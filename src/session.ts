@@ -21,8 +21,10 @@ const TOOL_NOTE = `Your tools are listed with the prefix ${TOOL_PREFIX}. A tool 
 const SETTLE_TIMEOUT_MS = 30_000;
 const TOOLS_SYNC_TIMEOUT_MS = 10_000;
 
+const debugEnabled = Boolean(process.env.PI_CLAUDE_BRIDGE_DEBUG);
+
 export const debug = (line: string) => {
-  if (process.env.PI_CLAUDE_BRIDGE_DEBUG) console.error(`[claude-bridge] ${line}`);
+  if (debugEnabled) console.error(`[claude-bridge] ${line}`);
 };
 
 const effortFor = (level: ThinkingLevel) => (level === "minimal" ? "low" : level);
@@ -112,6 +114,7 @@ export class ClaudeSession {
   broken = false;
   known: string[] = [];
   readonly promptSeen = new Set<string>();
+  lastSystemPrompt: string | undefined;
   readonly claudeSessionId: string;
   lastUsed = Date.now();
   private readonly cli: ClaudeCli;
@@ -137,11 +140,11 @@ export class ClaudeSession {
     this.claudeSessionId = config.resume ?? randomUUID();
     const command = resolveClaude();
     this.runDir = path.join(config.runDir, randomUUID());
-    mkdirSync(this.runDir, { recursive: true });
+    mkdirSync(this.runDir, { recursive: true, mode: 0o700 });
     const systemPromptFile = path.join(this.runDir, "system.md");
     const mcpConfigFile = path.join(this.runDir, "mcp.json");
-    writeFileSync(systemPromptFile, config.systemPrompt ? `${config.systemPrompt}\n\n${TOOL_NOTE}` : TOOL_NOTE);
-    writeFileSync(mcpConfigFile, JSON.stringify({ mcpServers: { [MCP_SERVER]: { type: "sdk", name: MCP_SERVER } } }));
+    writeFileSync(systemPromptFile, config.systemPrompt ? `${config.systemPrompt}\n\n${TOOL_NOTE}` : TOOL_NOTE, { mode: 0o600 });
+    writeFileSync(mcpConfigFile, JSON.stringify({ mcpServers: { [MCP_SERVER]: { type: "sdk", name: MCP_SERVER } } }), { mode: 0o600 });
     const args = [
       "-p",
       "--input-format", "stream-json",
@@ -159,7 +162,12 @@ export class ClaudeSession {
       ...(config.reasoning ? ["--effort", effortFor(config.reasoning)] : ["--thinking=disabled"]),
       ...(config.persist ? (config.resume ? ["--resume", config.resume] : ["--session-id", this.claudeSessionId]) : ["--no-session-persistence"]),
     ];
-    this.cli = new ClaudeCli(command, args, config.cwd, (message) => this.handle(message), (request) => this.control(request), (reason) => this.fail(reason));
+    try {
+      this.cli = new ClaudeCli(command, args, config.cwd, (message) => this.handle(message), (request) => this.control(request), (reason) => this.fail(reason));
+    } catch (error) {
+      rmSync(this.runDir, { recursive: true, force: true });
+      throw error;
+    }
     this.ready = this.cli.request({ subtype: "initialize", sdkMcpServers: [MCP_SERVER], promptSuggestions: false, agentProgressSummaries: false, title: "Pi" });
     this.ready.catch((error: Error) => this.fail(error.message));
   }
@@ -213,7 +221,11 @@ export class ClaudeSession {
 
   private async control(request: { subtype: string; [key: string]: unknown }): Promise<unknown> {
     if (request.subtype === "mcp_message" && request.server_name === MCP_SERVER) return { mcp_response: await this.mcp(request.message as JsonRpc) };
-    if (request.subtype === "can_use_tool") return { behavior: "allow", updatedInput: request.input };
+    if (request.subtype === "can_use_tool") {
+      return typeof request.tool_name === "string" && request.tool_name.startsWith(TOOL_PREFIX)
+        ? { behavior: "allow", updatedInput: request.input }
+        : { behavior: "deny", message: "Only Pi tools are available in this session." };
+    }
     throw new Error(`Unsupported request: ${request.subtype}`);
   }
 

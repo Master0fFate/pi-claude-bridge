@@ -37,7 +37,7 @@ export function resolveClaude(): string {
   const home = os.homedir();
   const installDirs = [path.join(home, ".local", "bin"), path.join(home, ".claude", "local"), ...(windows ? [path.join(home, "AppData", "Roaming", "npm")] : ["/opt/homebrew/bin", "/usr/local/bin"])];
   for (const dir of [...(envValue(process.env, "PATH") ?? "").split(path.delimiter), ...installDirs]) {
-    if (!dir) continue;
+    if (!dir || !path.isAbsolute(dir)) continue;
     for (const extension of extensions) {
       const candidate = path.join(dir, `claude${extension}`);
       if (executable(candidate)) return candidate;
@@ -63,7 +63,13 @@ function childEnv(): NodeJS.ProcessEnv {
   return { ...env, ...QUIET_ENV };
 }
 
-const quote = (arg: string) => `"${arg.replace(/"/g, '""')}"`;
+const SHELL_UNSAFE = /["%\r\n]/;
+
+function shellCommand(command: string, args: string[]): string {
+  const parts = [command, ...args];
+  if (parts.some((part) => SHELL_UNSAFE.test(part))) throw new Error("A path or argument for Claude Code contains a character that cannot be passed safely through cmd.exe (\" or %).");
+  return parts.map((part) => `"${part}"`).join(" ");
+}
 
 export type CliMessage = { type: string; [key: string]: unknown };
 export type ControlHandler = (request: { subtype: string; [key: string]: unknown }) => Promise<unknown>;
@@ -78,7 +84,7 @@ export class ClaudeCli {
   constructor(command: string, args: string[], cwd: string, private readonly onMessage: (message: CliMessage) => void, private readonly onControl: ControlHandler, private readonly onExit: (reason: string) => void) {
     const shell = /\.(cmd|bat)$/i.test(command);
     this.child = shell
-      ? spawn([quote(command), ...args.map(quote)].join(" "), { cwd, env: childEnv(), shell: true, windowsHide: true })
+      ? spawn(shellCommand(command, args), { cwd, env: childEnv(), shell: true, windowsHide: true })
       : spawn(command, args, { cwd, env: childEnv(), windowsHide: true });
     this.child.stdin.on("error", () => undefined);
     this.child.stderr.setEncoding("utf8");
